@@ -1,3 +1,11 @@
 {
-  "extends": "@react-native/typescript-config/tsconfig.json"
+  "extends": "@react-native/typescript-config/tsconfig.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "typeRoots": [
+      "./node_modules/@types", // Esta ruta es importante para los tipos de npm
+      "./src/modules" // Asegúrate de que esta ruta apunte al directorio que contiene tus archivos de declaración personalizados
+    ]
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/screens/HomeScreen.js", "src/screens/DetailsScreen.js"]
 }
