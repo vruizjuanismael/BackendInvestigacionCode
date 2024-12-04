@@ -84,6 +84,15 @@ const HomeScreen = ({navigation}: any) => {
     );
   };
 
+  const formatSoles = (amount: any) => {
+    return new Intl.NumberFormat('es-PE', {
+      style: 'currency',
+      currency: 'PEN',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
+
   const renderProjectItem = useCallback(
     ({item}: {item: Project}) => (
       <Pressable
@@ -97,7 +106,7 @@ const HomeScreen = ({navigation}: any) => {
         <View style={styles.cardViewDividerContainer}>
           <View style={styles.cardViewDividerLeft}>
             <Text style={styles.textCardDetails}>
-              Monto Viable: S/. {item.monto_viable}
+              Monto Viable: {formatSoles (item.monto_viable)}
             </Text>
             <Text style={styles.textCardDetails}>Función: {item.funcion}</Text>
             <Text style={styles.textCardDetails}>

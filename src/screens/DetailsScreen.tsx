@@ -89,6 +89,15 @@ const DetailsScreen = ({route, navigation}: any) => {
     }));
   };
 
+  const formatSoles = (amount: any) => {
+    return new Intl.NumberFormat('es-PE', {
+      style: 'currency',
+      currency: 'PEN',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -139,8 +148,8 @@ const DetailsScreen = ({route, navigation}: any) => {
                     FINANZAS RELACIONADO A LA INVERSIÓN
                   </Text>
                   <View style={styles.textCardDetails}>
-                    {renderField('Monto F16', item.monto_f16)}
-                    {renderField('Costo actualizado', item.costo_actualizado)}
+                    {renderField('Monto F16', formatSoles(item.monto_f16))}
+                    {renderField('Costo actualizado', formatSoles(item.costo_actualizado))}
                     {renderField(
                       'Devengado acumulado año anterior',
                       item.devengado_acumulado_ano_anterior,
