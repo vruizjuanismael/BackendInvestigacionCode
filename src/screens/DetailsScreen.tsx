@@ -152,7 +152,7 @@ const DetailsScreen = ({route, navigation}: any) => {
                     {renderField('Costo actualizado', formatSoles(item.costo_actualizado))}
                     {renderField(
                       'Devengado acumulado año anterior',
-                      item.devengado_acumulado_ano_anterior,
+                      formatSoles(item.devengado_acumulado_ano_anterior),
                     )}
                     {renderField(
                       'Mes-año primer devengado',
