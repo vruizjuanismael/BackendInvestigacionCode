@@ -1,5 +1,12 @@
 import React, {useState, useEffect} from 'react';
-import {View, Text, ScrollView, StyleSheet, Dimensions} from 'react-native';
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
+  Dimensions,
+  ActivityIndicator,
+} from 'react-native';
 import axios from 'axios';
 import {BarChart} from 'react-native-chart-kit';
 
@@ -8,19 +15,23 @@ const API_URL = 'http://192.168.1.36:8000/api/proyectos/';
 const GraphicScreen = ({route}: any) => {
   const {codigo_unico_inversion} = route.params;
   const [graphData, setGraphData] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true); // Nueva variable de estado de carga
 
   useEffect(() => {
     fetchGraphData();
   }, [codigo_unico_inversion]);
 
   const fetchGraphData = () => {
+    setLoading(true); // Iniciar carga
     axios
       .get(`${API_URL}${codigo_unico_inversion}`)
       .then(response => {
         processGraphData(response.data);
+        setLoading(false); // Finalizar carga
       })
       .catch(error => {
         console.error('Error al obtener los datos del gráfico:', error);
+        setLoading(false); // Finalizar carga en caso de error
       });
   };
 
@@ -74,11 +85,20 @@ const GraphicScreen = ({route}: any) => {
 
   return (
     <View style={styles.container}>
-      <ScrollView>
+      <ScrollView contentContainerStyle={styles.scrollContainer}>
         <View style={styles.graphContainer}>
           <Text style={styles.graphTitle}>Datos Procesados</Text>
 
-          {graphData.length > 0 ? (
+          {loading ? (
+            <View style={styles.loadingContainer}>
+              <ActivityIndicator
+                size="large"
+                color="#0000ff"
+                style={styles.spinner}
+              />
+              <Text style={styles.loadingText}>Cargando datos...</Text>
+            </View>
+          ) : graphData.length > 0 ? (
             <BarChart
               data={getGraphData()}
               width={screenWidth - 40}
@@ -111,33 +131,42 @@ const GraphicScreen = ({route}: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    backgroundColor: '#f8f8f8',
+    padding: 20,
+    backgroundColor: '#f7f7f7',
+  },
+  scrollContainer: {
+    paddingBottom: 20,
   },
   graphContainer: {
-    padding: 10,
-    backgroundColor: '#ffffff',
-    borderRadius: 10,
     alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: {width: 0, height: 2},
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
   },
   graphTitle: {
-    color: '#333',
-    fontSize: 18,
+    fontSize: 16,
     fontWeight: 'bold',
+    color: '#333',
+  },
+  loadingContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 50,
+  },
+  spinner: {
     marginBottom: 10,
-    textAlign: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    color: 'black',
+    marginTop: 10,
+    fontWeight: '500',
   },
   chartStyle: {
-    borderRadius: 16,
+    marginTop: 20,
+    borderRadius: 8,
   },
   noDataText: {
-    fontSize: 16,
-    color: '#555',
+    fontSize: 18,
+    color: '#888',
+    marginTop: 20,
     textAlign: 'center',
   },
 });

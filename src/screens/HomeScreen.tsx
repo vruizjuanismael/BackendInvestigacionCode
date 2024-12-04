@@ -1,4 +1,4 @@
-import React, {useState, useEffect, useCallback} from 'react';
+import React, {useState, useEffect, useCallback, useMemo} from 'react';
 import {
   View,
   Text,
@@ -7,6 +7,7 @@ import {
   Pressable,
   StyleSheet,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import axios from 'axios';
 import {Project} from '../types';
@@ -16,7 +17,6 @@ const API_URL = 'http://192.168.1.36:8000/api/proyectos/';
 const HomeScreen = ({navigation}: any) => {
   const [search, setSearch] = useState('');
   const [projects, setProjects] = useState<Project[]>([]);
-  const [filteredProjects, setFilteredProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,7 +26,6 @@ const HomeScreen = ({navigation}: any) => {
       .get(API_URL)
       .then(response => {
         setProjects(response.data);
-        setFilteredProjects(response.data);
         setLoading(false);
       })
       .catch(error => {
@@ -36,57 +35,49 @@ const HomeScreen = ({navigation}: any) => {
   }, []);
 
   // Filtrar proyectos por campos relevantes
-  const handleSearch = useCallback(
-    (text: string) => {
-      setSearch(text);
+  const handleSearch = useCallback((text: string) => {
+    setSearch(text);
+  }, []);
 
-      // Normalizamos el texto de búsqueda y los datos antes de compararlos
-      const normalizedText = text
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '');
+  // Validar si la búsqueda está vacía o contiene solo espacios
+  const isSearchValid = search.trim().length > 0;
 
-      const filtered = projects.filter(
-        project =>
-          project.nombre_inversion
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase()
-            .includes(normalizedText.toLowerCase()) ||
-          project.funcion
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase()
-            .includes(normalizedText.toLowerCase()) ||
-          project.ejecutora
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase()
-            .includes(normalizedText.toLowerCase()) ||
-          project.departamento
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase()
-            .includes(normalizedText.toLowerCase()) ||
-          project.provincia
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, '')
-            .toLowerCase()
-            .includes(normalizedText.toLowerCase()),
+  // Memoizamos el resultado de la búsqueda
+  const filteredProjects = useMemo(() => {
+    if (!isSearchValid) {
+      return projects; // Si la búsqueda no es válida, mostramos todos los proyectos
+    }
+
+    const normalizedText = search
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, ''); // Normalizamos la búsqueda
+
+    return projects.filter(project => {
+      const searchIn = [
+        project.nombre_inversion,
+        project.funcion,
+        project.ejecutora,
+        project.departamento,
+        project.provincia,
+        project.estado_inversion,
+      ];
+
+      return searchIn.some(field =>
+        field
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase()
+          .includes(normalizedText.toLowerCase()),
       );
-      setFilteredProjects(filtered);
-    },
-    [projects],
-  );
+    });
+  }, [search, projects]);
 
   const replaceWithTilde = (text: string) => {
-    // Reemplazar palabras como "FERREAFE" por "FERREÑAFE", "CAARI" por "CAÑARIS"
     const replacements: {[key: string]: string} = {
       FERREAFE: 'FERREÑAFE',
       CAARIS: 'CAÑARIS',
-      // Añadir más reemplazos si es necesario
+      //Agregar otros
     };
-
-    // Reemplazar cada coincidencia en el texto
     return text.replace(
       /\b(FERREAFE|CAARIS)\b/g,
       match => replacements[match] || match,
@@ -103,26 +94,32 @@ const HomeScreen = ({navigation}: any) => {
           })
         }>
         <Text style={styles.cardTitle}>{item.nombre_inversion}</Text>
-        <Text style={styles.textCardDetails}>
-          Monto Viable: {item.monto_viable}
-        </Text>
-        <Text style={styles.textCardDetails}>Función: {item.funcion}</Text>
-        <Text style={styles.textCardDetails}>Situación: {item.situacion}</Text>
-        <Text style={styles.textCardDetails}>
-          Estado Inversión: {item.estado_inversion}
-        </Text>
-        <Text style={styles.textCardDetails}>
-          Ejecutora: {replaceWithTilde(item.ejecutora)}
-        </Text>
-        <Text style={styles.textCardDetails}>
-          Beneficiarios: {item.beneficiarios}
-        </Text>
-        <Text style={styles.textCardDetails}>
-          Departamento: {replaceWithTilde(item.departamento)}
-        </Text>
-        <Text style={styles.textCardDetails}>
-          Provincia: {replaceWithTilde(item.provincia)}
-        </Text>
+        <View style={styles.cardViewDividerContainer}>
+          <View style={styles.cardViewDividerLeft}>
+            <Text style={styles.textCardDetails}>
+              Monto Viable: S/. {item.monto_viable}
+            </Text>
+            <Text style={styles.textCardDetails}>Función: {item.funcion}</Text>
+            <Text style={styles.textCardDetails}>
+              Situación: {item.situacion}
+            </Text>
+            <Text style={styles.textCardDetails}>
+              Estado de inversión: {item.estado_inversion}
+            </Text>
+            <Text style={styles.textCardDetails}>
+              Ejecutora: {replaceWithTilde(item.ejecutora)}
+            </Text>
+            <Text style={styles.textCardDetails}>
+              Beneficiarios: {item.beneficiarios}
+            </Text>
+            <Text style={styles.textCardDetails}>
+              Departamento: {replaceWithTilde(item.departamento)}
+            </Text>
+            <Text style={styles.textCardDetails}>
+              Provincia: {replaceWithTilde(item.provincia)}
+            </Text>
+          </View>
+        </View>
       </Pressable>
     ),
     [navigation],
@@ -131,27 +128,32 @@ const HomeScreen = ({navigation}: any) => {
   return (
     <View style={styles.container}>
       <Text style={styles.header}>
-        APLICACION DE CONSULTAS PARA PROYECTOS DE INVERSION PÚBLICA
+        APLICACIÓN DE CONSULTAS DE PROYECTOS DE INVERSIÓN PÚBLICA
       </Text>
       <Text style={styles.seBuscarPor}>
-        Se puede buscar por: Nombre de Inversión, Función, Ejecutora,
-        Departamento y Provincia.
+        Se puede buscar por: nombre de inversión, función, ejecutora,
+        departamento y provincia.
       </Text>
-
       {/* Barra de búsqueda */}
-      <TextInput
-        style={styles.searchBar}
-        placeholder="Buscar . . . "
-        value={search}
-        onChangeText={handleSearch}
-      />
-
+      <View style={styles.searchInputContainer}>
+        <Image
+          source={require('../assets/images/search.png')}
+          style={styles.searchIcon}
+        />
+        <TextInput
+          style={styles.searchBar}
+          placeholder="Buscar . . . "
+          value={search}
+          onChangeText={handleSearch}
+        />
+      </View>
+      <Text style={styles.seleccionar}>Seleccione un proyecto:</Text>
       {/* Indicador de carga */}
       {loading ? (
         <ActivityIndicator size="large" color="#0000ff" />
       ) : error ? (
         <Text style={styles.errorText}>{error}</Text>
-      ) : filteredProjects.length === 0 ? (
+      ) : filteredProjects.length === 0 && isSearchValid ? (
         <Text style={styles.noResultsText}>
           No se encontraron proyectos con ese criterio de búsqueda.
         </Text>
@@ -160,8 +162,8 @@ const HomeScreen = ({navigation}: any) => {
           data={filteredProjects}
           keyExtractor={item => item.id.toString()}
           renderItem={renderProjectItem}
-          initialNumToRender={10}
-          maxToRenderPerBatch={10}
+          initialNumToRender={5}
+          maxToRenderPerBatch={5}
           windowSize={5}
           removeClippedSubviews={true}
         />
@@ -173,35 +175,58 @@ const HomeScreen = ({navigation}: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
-    backgroundColor: '#FEFEFE',
+    padding: 12,
+    backgroundColor: '#FAFAFA',
   },
   header: {
     fontSize: 20,
     color: 'black',
     fontStyle: 'italic',
     fontWeight: 'bold',
-    marginBottom: 16,
+    marginBottom: 6,
     textAlign: 'center',
   },
   seBuscarPor: {
     fontSize: 16,
     color: 'black',
-    marginBottom: 16,
+    marginBottom: 8,
     textAlign: 'left',
   },
+  seleccionar: {
+    fontSize: 16,
+    color: 'black',
+    marginBottom: 8,
+    paddingTop: 4,
+    textAlign: 'left',
+  },
+  searchInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'black',
+    borderRadius: 50,
+    marginVertical: 1,
+    paddingHorizontal: 10,
+    width: '100%',
+    backgroundColor: 'white',
+    alignSelf: 'center',
+  },
+  searchIcon: {
+    height: 24,
+    width: 24,
+    marginRight: 10,
+  },
   searchBar: {
-    fontStyle: 'italic',
-    fontWeight: 'bold',
-    borderWidth: 2,
-    borderColor: '#959595',
+    width: '89%',
     borderRadius: 8,
-    padding: 8,
-    marginBottom: 16,
+    fontStyle: 'italic',
+    color: 'black',
+    fontWeight: 'bold',
+    padding: 6,
   },
   card: {
     borderWidth: 1,
-    backgroundColor: '#F6F6F6',
+    backgroundColor: 'white',
     padding: 14,
     borderRadius: 20,
     marginBottom: 16,
@@ -215,6 +240,17 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: 'black',
     marginBottom: 8,
+  },
+  cardViewDividerContainer: {
+    flexDirection: 'row',
+  },
+  cardViewDividerLeft: {
+    width: '100%',
+  },
+  cardViewDividerRight: {
+    width: '10%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   textCardDetails: {
     fontSize: 14,

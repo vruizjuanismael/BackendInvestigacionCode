@@ -9,7 +9,9 @@ const DetailsScreen = ({route, navigation}: any) => {
   const {codigo_unico_inversion} = route.params;
   const [projectDetails, setProjectDetails] = useState<Project[]>([]);
   const [refreshing, setRefreshing] = useState(false);
-  const [showMoreDetails, setShowMoreDetails] = useState(false);
+  const [expandedProjects, setExpandedProjects] = useState<{
+    [key: string]: boolean;
+  }>({});
 
   useEffect(() => {
     fetchProjectDetails();
@@ -28,6 +30,7 @@ const DetailsScreen = ({route, navigation}: any) => {
         console.error('Error fetching details:', error);
       });
   };
+
   const capitalizeFirstLetter = (text: string) => {
     return text
       ? text.charAt(0).toUpperCase() + text.slice(1).toLowerCase()
@@ -59,6 +62,10 @@ const DetailsScreen = ({route, navigation}: any) => {
     return null;
   };
 
+  const cleanText = (text: string) => {
+    return text.replace(/^:\s*/, '').trim();
+  };
+
   const replaceWithTilde = (text: string) => {
     const replacements: {[key: string]: string} = {
       FERREAFE: 'FERREÑAFE',
@@ -75,6 +82,13 @@ const DetailsScreen = ({route, navigation}: any) => {
     return '';
   };
 
+  const handleToggleDetails = (id: string) => {
+    setExpandedProjects(prevState => ({
+      ...prevState,
+      [id]: !prevState[id],
+    }));
+  };
+
   return (
     <View style={styles.container}>
       <FlatList
@@ -86,9 +100,9 @@ const DetailsScreen = ({route, navigation}: any) => {
               <Text style={styles.cardTitleDetails}>
                 DESCRIPCIÓN ALTERNATIVA
               </Text>
-              {renderField('', item.descripcion_alternativa)}
+              {renderField('', cleanText(item.descripcion_alternativa))}
             </View>
-            {showMoreDetails && (
+            {expandedProjects[item.id] && (
               <>
                 <View>
                   <Text style={styles.cardTitleDetails}>
@@ -145,9 +159,9 @@ const DetailsScreen = ({route, navigation}: any) => {
             )}
             <TouchableOpacity
               style={styles.buttonView}
-              onPress={() => setShowMoreDetails(!showMoreDetails)}>
+              onPress={() => handleToggleDetails(item.id.toString())}>
               <Text style={styles.buttonTextInnerView}>
-                {showMoreDetails ? 'Ver menos' : 'Ver más'}
+                {expandedProjects[item.id] ? 'Ver menos' : 'Ver más'}
               </Text>
             </TouchableOpacity>
           </View>
@@ -174,7 +188,7 @@ const DetailsScreen = ({route, navigation}: any) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 16,
+    padding: 12,
     backgroundColor: '#f8f8f8',
   },
   cardDetail: {
