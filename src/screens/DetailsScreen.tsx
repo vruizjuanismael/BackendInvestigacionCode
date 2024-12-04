@@ -1,25 +1,33 @@
 import React, {useState, useEffect} from 'react';
-import {View, Text, FlatList, StyleSheet} from 'react-native';
+import {View, Text, FlatList, StyleSheet, TouchableOpacity} from 'react-native';
 import axios from 'axios';
 import {Project} from '../types';
 
 const API_URL = 'http://192.168.1.36:8000/api/proyectos/';
 
-const DetailsScreen = ({route}: any) => {
+const DetailsScreen = ({route, navigation}: any) => {
   const {codigo_unico_inversion} = route.params;
   const [projectDetails, setProjectDetails] = useState<Project[]>([]);
+  const [refreshing, setRefreshing] = useState(false);
+  const [showMoreDetails, setShowMoreDetails] = useState(false);
 
   useEffect(() => {
+    fetchProjectDetails();
+  }, [codigo_unico_inversion]);
+
+  const fetchProjectDetails = () => {
+    setRefreshing(true);
     axios
       .get(`${API_URL}${codigo_unico_inversion}`)
       .then(response => {
         setProjectDetails(response.data);
+        setRefreshing(false);
       })
       .catch(error => {
+        setRefreshing(false);
         console.error('Error fetching details:', error);
       });
-  }, [codigo_unico_inversion]);
-
+  };
   const capitalizeFirstLetter = (text: string) => {
     return text
       ? text.charAt(0).toUpperCase() + text.slice(1).toLowerCase()
@@ -32,7 +40,8 @@ const DetailsScreen = ({route}: any) => {
       value === 'Desconocido' ||
       value === '' ||
       value === '0' ||
-      value.toString() === 'nan'
+      value.toString() === 'nan' ||
+      value === '0.00'
     ) {
       return false;
     }
@@ -43,11 +52,19 @@ const DetailsScreen = ({route}: any) => {
     if (isValidValue(value)) {
       return (
         <Text style={styles.textCardDetails}>
-          {title}: {capitalizeFirstLetter(value.toString().toLowerCase())}
+          {title}: {capitalizeFirstLetter(value.toString())}
         </Text>
       );
     }
     return null;
+  };
+
+  const replaceWithTilde = (text: string) => {
+    const replacements: {[key: string]: string} = {
+      FERREAFE: 'FERREÑAFE',
+      CAARIS: 'CAÑARIS',
+    };
+    return replacements[text] || text;
   };
 
   // Función para formatear la fecha (202405 -> 2024-05)
@@ -55,28 +72,15 @@ const DetailsScreen = ({route}: any) => {
     if (dateString && dateString.length === 6) {
       return `${dateString.slice(0, 4)}-${dateString.slice(4, 6)}`;
     }
-    return ''; // Retorna vacío si el valor es incorrecto o nulo
-  };
-
-  const replaceWithTilde = (text: string) => {
-    const replacements: {[key: string]: string} = {
-      FERREAFE: 'FERREÑAFE',
-      CAARIS: 'CAÑARIS',
-      // Añadir más reemplazos si es necesario
-    };
-
-    return text.replace(
-      /\b(FERREAFE|CAARIS)\b/g,
-      match => replacements[match] || match,
-    );
+    return '';
   };
 
   return (
     <View style={styles.container}>
       <FlatList
         data={projectDetails}
-        keyExtractor={item => item.id.toString()}
-        renderItem={({item}) => (
+        keyExtractor={(item: Project) => item.id.toString()}
+        renderItem={({item}: {item: Project}) => (
           <View style={styles.cardDetail}>
             <View>
               <Text style={styles.cardTitleDetails}>
@@ -84,60 +88,85 @@ const DetailsScreen = ({route}: any) => {
               </Text>
               {renderField('', item.descripcion_alternativa)}
             </View>
-            <View>
-              <Text style={styles.cardTitleDetails}>
-                RESPONSABLES DE LA INVERSIÓN
+            {showMoreDetails && (
+              <>
+                <View>
+                  <Text style={styles.cardTitleDetails}>
+                    RESPONSABLES DE LA INVERSIÓN
+                  </Text>
+                  {renderField('Unidad OPMI', item.unidad_opmi)}
+                  {renderField('Unidad UEI', item.unidad_uei)}
+                  {renderField('Unidad UF', item.unidad_uf)}
+                  {renderField('Responsable OPMI', item.responsable_opmi)}
+                  {renderField('Responsable UEI', item.responsable_uei)}
+                  {renderField('Responsable UF', item.responsable_uf)}
+                </View>
+                <View>
+                  <Text style={styles.cardTitleDetails}>
+                    ENTIDADES RELACIONADAS CON LA INVERSIÓN
+                  </Text>
+                  {renderField('Entidad', item.entidad)}
+                  {renderField('Ejecutora', item.ejecutora)}
+                  {renderField('Entidad OPI', item.entidad_opi)}
+                  {renderField('Responsable OPI', item.responsable_opi)}
+                  {renderField(
+                    'Departamento',
+                    replaceWithTilde(item.departamento),
+                  )}
+                  {renderField('Provincia', replaceWithTilde(item.provincia))}
+                  {renderField(
+                    'Centro poblado',
+                    replaceWithTilde(item.centro_poblado),
+                  )}
+                  {renderField('Último estudio', item.ultimo_estudio)}
+                </View>
+                <View>
+                  <Text style={styles.cardTitleDetails}>
+                    FINANZAS RELACIONADO A LA INVERSIÓN
+                  </Text>
+                  <View style={styles.textCardDetails}>
+                    {renderField('Monto F16', item.monto_f16)}
+                    {renderField('Costo actualizado', item.costo_actualizado)}
+                    {renderField(
+                      'Devengado acumulado año anterior',
+                      item.devengado_acumulado_ano_anterior,
+                    )}
+                    {renderField(
+                      'Mes-año primer devengado',
+                      formatDate(item.mes_ano_primer_devengado),
+                    )}
+                    {renderField(
+                      'Mes-año último devengado',
+                      formatDate(item.mes_ano_ultimo_devengado),
+                    )}
+                  </View>
+                </View>
+              </>
+            )}
+            <TouchableOpacity
+              style={styles.buttonView}
+              onPress={() => setShowMoreDetails(!showMoreDetails)}>
+              <Text style={styles.buttonTextInnerView}>
+                {showMoreDetails ? 'Ver menos' : 'Ver más'}
               </Text>
-              <View style={styles.textCardDetails}>
-                {renderField('Unidad OPMI', item.unidad_opmi)}
-                {renderField('Unidad UEI', item.unidad_uei)}
-                {renderField('Unidad UF', item.unidad_uf)}
-                {renderField('Responsable OPMI', item.responsable_opmi)}
-                {renderField('Responsable UEI', item.responsable_uei)}
-                {renderField('Responsable UF', item.responsable_uf)}
-              </View>
-            </View>
-
-            <View>
-              <Text style={styles.cardTitleDetails}>
-                ENTIDADES RELACIONADAS CON LA INVERSIÓN
-              </Text>
-              {renderField('Entidad', item.entidad)}
-              {renderField('Ejecutora', item.ejecutora)}
-              {renderField('Entidad OPI', item.entidad_opi)}
-              {renderField('Responsable OPI', item.responsable_opi)}
-              {renderField('Departamento', replaceWithTilde(item.departamento))}
-              {renderField('Provincia', replaceWithTilde(item.provincia))}
-              {renderField(
-                'Centro poblado',
-                replaceWithTilde(item.centro_poblado),
-              )}
-              {renderField('Último estudio', item.ultimo_estudio)}
-            </View>
-            <View>
-              <Text style={styles.cardTitleDetails}>
-                FINANZAS RELACIONADO A LA INVERSIÓN
-              </Text>
-              <View style={styles.textCardDetails}>
-                {renderField('Monto F16', item.monto_f16)}
-                {renderField('Costo actualizado', item.costo_actualizado)}
-                {renderField(
-                  'Devengado acumulado año anterior',
-                  item.devengado_acumulado_ano_anterior,
-                )}
-                {renderField(
-                  'Mes-año primer devengado',
-                  formatDate(item.mes_ano_primer_devengado),
-                )}
-                {renderField(
-                  'Mes-año último devengado',
-                  formatDate(item.mes_ano_ultimo_devengado),
-                )}
-              </View>
-            </View>
+            </TouchableOpacity>
           </View>
         )}
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>No hay detalles disponibles.</Text>
+        }
+        onRefresh={fetchProjectDetails}
+        refreshing={refreshing}
+        initialNumToRender={10}
+        removeClippedSubviews={true}
       />
+      <TouchableOpacity
+        style={styles.buttonView}
+        onPress={() =>
+          navigation.navigate('Graphic', {codigo_unico_inversion})
+        }>
+        <Text style={styles.buttonTextInnerView}>Gráfico</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -172,6 +201,67 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'black',
     paddingBottom: 1,
+  },
+  graphContainer: {
+    //width: '100%',
+
+    marginTop: 20,
+    padding: 10,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 10,
+  },
+  graphTitle: {
+    color: 'black',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+    textAlign: 'center',
+  },
+  barContainer: {
+    //borderWidth: 1,
+    flexDirection: 'row', // Este mantiene los elementos en fila (horizontal)
+    alignItems: 'flex-end', // Alineación al fondo, para que las barras se alineen de acuerdo a su altura
+    marginVertical: 5,
+  },
+  containerObject: {
+    flexDirection: 'column',
+    borderWidth: 3,
+    width: '100%',
+    //height: 100,
+  },
+  textStyleGrafico: {
+    color: 'black',
+    textAlign: 'center',
+  },
+  bar: {
+    marginTop: 4,
+    marginBottom: 4,
+    alignSelf: 'center',
+    borderWidth: 1,
+    width: 100,
+    height: '1%',
+    backgroundColor: '#4CAF50',
+  },
+  emptyText: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginTop: 20,
+    color: '#888',
+  },
+  buttonView: {
+    alignSelf: 'center',
+    width: 120,
+    backgroundColor: '#4CAF50',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginTop: 10,
+    alignItems: 'center',
+  },
+  buttonTextInnerView: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
 

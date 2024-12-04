@@ -1,3 +1,8 @@
+export type RootStackParamList = {
+  Details: {codigo_unico_inversion: string};
+  Graphic: {graphData: {label: string; count: number}[]};
+};
+
 export interface Project {
   id: number;
   codigo_unico_inversion: string;
